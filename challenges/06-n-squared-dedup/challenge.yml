@@ -1,0 +1,30 @@
+name: "The Dedup Disaster"
+category: "Algorithmic"
+difficulty: "Intermediate"
+points: 250
+description: |
+  The nightly data import pipeline deduplicates customer records by comparing
+  every pair for similarity. With 100,000 records, it takes over 40 seconds.
+
+  Records are considered duplicates if they share the same normalized key:
+  lowercase(last_name) + zip_code.
+
+  Fix `dedup.py` so it processes 100K records in under 200ms while finding
+  the exact same duplicates.
+
+  Edit `/app/dedup.py` and hit /verify.
+
+hints:
+  - cost: 10
+    content: "The current approach compares every pair. What's the Big-O?"
+  - cost: 25
+    content: "O(n²) — 100K records means 5 billion comparisons. Can you group records that might be duplicates?"
+  - cost: 50
+    content: "Build a dictionary keyed by (lowercase last_name + zip). Records in the same bucket are duplicates. One pass through the data."
+
+flag_format: "static"
+flag: "FLAG{hash_bucket_not_brute_force_c3b1}"
+
+verification:
+  type: "time_threshold"
+  threshold_ms: 200

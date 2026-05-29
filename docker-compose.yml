@@ -1,0 +1,121 @@
+services:
+  # === CTFd Platform ===
+  ctfd:
+    image: ctfd/ctfd:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=mysql+pymysql://ctfd:ctfd@ctfd-db/ctfd
+      - REDIS_URL=redis://ctfd-redis:6379
+      - SECRET_KEY=change-me-in-production
+    depends_on:
+      ctfd-db:
+        condition: service_healthy
+      ctfd-redis:
+        condition: service_started
+    volumes:
+      - ctfd-uploads:/var/uploads
+      - ctfd-logs:/var/log/CTFd
+
+  ctfd-db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=ctfd
+      - MYSQL_USER=ctfd
+      - MYSQL_PASSWORD=ctfd
+      - MYSQL_DATABASE=ctfd
+    volumes:
+      - ctfd-mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  ctfd-redis:
+    image: redis:7-alpine
+
+  # === Challenge 01: Missing Index ===
+  challenge-01-missing-index:
+    build: ./challenges/01-missing-index
+    ports:
+      - "9001:8080"
+    depends_on:
+      - challenge-01-db
+
+  challenge-01-db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=challenge
+      - POSTGRES_PASSWORD=challenge
+      - POSTGRES_DB=orders
+    volumes:
+      - ./challenges/01-missing-index/seed.sql:/docker-entrypoint-initdb.d/seed.sql
+
+  # === Challenge 02: Transaction Batching ===
+  challenge-02-transaction-batching:
+    build: ./challenges/02-transaction-batching
+    ports:
+      - "9002:8080"
+    depends_on:
+      - challenge-02-db
+
+  challenge-02-db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=challenge
+      - POSTGRES_PASSWORD=challenge
+      - POSTGRES_DB=events
+    volumes:
+      - ./challenges/02-transaction-batching/seed.sql:/docker-entrypoint-initdb.d/seed.sql
+
+  # === Challenge 03: Chatty API ===
+  challenge-03-chatty-api:
+    build: ./challenges/03-chatty-api
+    ports:
+      - "9003:8080"
+    depends_on:
+      - challenge-03-backend
+
+  challenge-03-backend:
+    build: ./challenges/03-chatty-api/backend
+    environment:
+      - SIMULATED_LATENCY_MS=50
+
+  # === Challenge 04: Bounded Concurrency ===
+  challenge-04-bounded-concurrency:
+    build: ./challenges/04-bounded-concurrency
+    ports:
+      - "9004:8080"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+
+  # === Challenge 05: List to Set ===
+  challenge-05-list-to-set:
+    build: ./challenges/05-list-to-set
+    ports:
+      - "9005:8080"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  # === Challenge 06: N² Deduplication ===
+  challenge-06-n-squared-dedup:
+    build: ./challenges/06-n-squared-dedup
+    ports:
+      - "9006:8080"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+
+volumes:
+  ctfd-uploads:
+  ctfd-logs:
+  ctfd-mysql:

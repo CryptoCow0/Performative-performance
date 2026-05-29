@@ -1,0 +1,29 @@
+name: "Death by a Thousand Commits"
+category: "Database"
+difficulty: "Intermediate"
+points: 200
+description: |
+  The event ingestion service writes sensor readings to the database. It's receiving
+  1000 events per batch but takes ~30 seconds to persist them. The DevOps team says
+  the disk I/O is maxed out during writes.
+
+  Your task: fix the `ingest.py` script so it writes all 1000 events in under 500ms
+  while maintaining data integrity (all-or-nothing — if one fails, none persist).
+
+  The broken script is at `/app/ingest.py`. Edit it and hit /verify to test.
+
+hints:
+  - cost: 10
+    content: "Each INSERT is its own transaction. What does that mean for disk flushes?"
+  - cost: 25
+    content: "PostgreSQL flushes WAL to disk on every COMMIT. 1000 commits = 1000 fsyncs."
+  - cost: 50
+    content: "Wrap all inserts in a single BEGIN/COMMIT block. Or use executemany()."
+
+flag_format: "static"
+flag: "FLAG{batch_your_commits_a91c}"
+
+verification:
+  type: "time_threshold"
+  threshold_ms: 500
+  row_count: 1000

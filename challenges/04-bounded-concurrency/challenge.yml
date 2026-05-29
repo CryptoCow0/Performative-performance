@@ -1,0 +1,41 @@
+name: "Too Parallel, Too Furious"
+category: "Concurrency"
+difficulty: "Intermediate"
+points: 250
+description: |
+  The image processing service needs to resize 200 images. Each resize takes
+  ~100ms of actual work. The naive implementation processes them sequentially
+  (20 seconds total). A previous developer "fixed" it by launching ALL 200
+  concurrently — but this overwhelms the system, causes timeouts and errors,
+  and actually takes LONGER due to resource contention.
+
+  Your task: fix `process_images.py` to maximize throughput WITHOUT errors.
+  The system can handle ~20 concurrent operations before degrading.
+
+  Requirements:
+  - All 200 images must be processed successfully (no errors)
+  - Total time must be under 2 seconds
+  - No more than 25 concurrent requests at any time (server rejects beyond this)
+
+  Edit `/app/process_images.py` and hit /verify.
+
+hints:
+  - cost: 10
+    content: "The server returns 429 (Too Many Requests) when overloaded. How many can it handle at once?"
+  - cost: 25
+    content: "You need concurrency, but bounded. Think: worker pool, semaphore, or asyncio.Semaphore."
+  - cost: 50
+    content: "Use asyncio with a Semaphore(20) or a ThreadPoolExecutor(max_workers=20). Process all 200 with bounded parallelism."
+
+flag_format: "static"
+flag: "FLAG{bounded_concurrency_is_key_8f4d}"
+
+verification:
+  type: "compound"
+  checks:
+    - type: "time_threshold"
+      threshold_ms: 2000
+    - type: "error_rate"
+      max_errors: 0
+    - type: "concurrency_cap"
+      max_concurrent: 25

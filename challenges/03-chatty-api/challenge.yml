@@ -1,0 +1,30 @@
+name: "The Chatty Client"
+category: "Network/IO"
+difficulty: "Beginner"
+points: 150
+description: |
+  The dashboard page loads user profiles for a team of 200 people. Currently it
+  fetches each profile one at a time. With 50ms network latency per request,
+  the page takes over 10 seconds to load.
+
+  The backend already has a batch endpoint (`POST /users/batch`) that accepts
+  a JSON body `{"user_ids": [...]}` and returns all profiles in one response.
+
+  Fix `fetch_profiles.py` so the total load time is under 2 seconds.
+
+  Edit `/app/fetch_profiles.py` and hit /verify.
+
+hints:
+  - cost: 10
+    content: "Look at the available API endpoints. Is there one that accepts multiple IDs?"
+  - cost: 25
+    content: "POST /users/batch accepts {\"user_ids\": [1,2,3,...]} and returns all at once."
+  - cost: 50
+    content: "Replace the loop with a single call to the batch endpoint. One round-trip instead of 200."
+
+flag_format: "static"
+flag: "FLAG{batch_endpoints_save_lives_7e2a}"
+
+verification:
+  type: "time_threshold"
+  threshold_ms: 2000

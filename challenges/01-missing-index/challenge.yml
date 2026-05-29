@@ -1,0 +1,38 @@
+name: "The Slow Order Lookup"
+category: "Database"
+difficulty: "Beginner"
+points: 100
+description: |
+  The customer support team is complaining that looking up orders by customer
+  email takes forever. The query below runs against a table with 5 million orders
+  and currently takes ~25 seconds.
+
+  Your goal: make it run in under 5 milliseconds while returning the same results.
+
+  Connect to the database and fix the performance issue. When your fix is in place,
+  hit the /verify endpoint to get your flag.
+
+  ```sql
+  SELECT order_id, order_date, total_amount, status
+  FROM orders
+  WHERE customer_email = 'jane.doe@example.com'
+  ORDER BY order_date DESC
+  LIMIT 20;
+  ```
+
+hints:
+  - cost: 10
+    content: "Run EXPLAIN ANALYZE on the query. What kind of scan is it doing?"
+  - cost: 25
+    content: "The table has no indexes besides the primary key. What column is being filtered?"
+  - cost: 50
+    content: "CREATE INDEX ... ON orders(customer_email) — but can you make it even faster with a covering index?"
+
+flag_format: "static"
+flag: "FLAG{index_the_world_362f}"
+
+verification:
+  type: "time_threshold"
+  query: "SELECT order_id, order_date, total_amount, status FROM orders WHERE customer_email = 'jane.doe@example.com' ORDER BY order_date DESC LIMIT 20;"
+  threshold_ms: 5
+  must_return_rows: true

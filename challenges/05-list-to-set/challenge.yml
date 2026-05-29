@@ -1,0 +1,28 @@
+name: "The Permission Slog"
+category: "Algorithmic"
+difficulty: "Beginner"
+points: 100
+description: |
+  The RBAC middleware checks whether each incoming action is allowed by scanning
+  a list of 5000 permitted actions. Under load (10,000 actions to validate per batch),
+  this takes over 4 seconds.
+
+  Your task: fix `check_permissions.py` so the full batch completes in under 50ms
+  while returning the exact same results.
+
+  Edit `/app/check_permissions.py` and hit /verify.
+
+hints:
+  - cost: 10
+    content: "What's the time complexity of `if x in some_list`?"
+  - cost: 25
+    content: "Lists have O(n) lookup. What data structure has O(1) lookup?"
+  - cost: 50
+    content: "Convert the allowed_actions list to a set before the loop."
+
+flag_format: "static"
+flag: "FLAG{sets_are_o1_f4d8}"
+
+verification:
+  type: "time_threshold"
+  threshold_ms: 50
