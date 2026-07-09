@@ -1,6 +1,6 @@
 # CTF Performance Challenges
 
-Performance engineering challenges deployed via [CTFd](https://github.com/CTFd/CTFd). Each challenge presents a real-world performance problem — participants fix the code/query/architecture to meet a target threshold.
+Performance engineering challenges deployed via [CTFd](https://github.com/CTFd/CTFd). Each challenge presents a real-world performance problem. The participants fix the code/query/architecture to meet a target threshold.
 
 ## Challenge Categories
 
