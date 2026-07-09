@@ -51,6 +51,11 @@ services:
       - POSTGRES_DB=orders
     volumes:
       - ./challenges/01-missing-index/seed.sql:/docker-entrypoint-initdb.d/seed.sql
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
 
   # === Challenge 02: Transaction Batching ===
   challenge-02-transaction-batching:
@@ -114,6 +119,18 @@ services:
         limits:
           cpus: "1.0"
           memory: 512M
+
+  # === 07: MyGov Database Profiler ===
+  challenge-07-db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=mygov
+      - POSTGRES_PASSWORD=mygov
+      - POSTGRES_DB=mygov
+    ports:
+      - "5407:5432"
+    volumes:
+      - ./challenges/07-mygovdatabase-profiler/seed.sql:/docker-entrypoint-initdb.d/seed.sql
 
 volumes:
   ctfd-uploads:

@@ -4,13 +4,35 @@ difficulty: "Beginner"
 points: 100
 description: |
   The customer support team is complaining that looking up orders by customer
-  email takes forever. The query below runs against a table with 5 million orders
-  and currently takes ~25 seconds.
+  email takes forever. The query below runs against a table with 5 million orders and currently takes ~500ms.
 
   Your goal: make it run in under 5 milliseconds while returning the same results.
 
   Connect to the database and fix the performance issue. When your fix is in place,
   hit the /verify endpoint to get your flag.
+
+  Connect to the database using: 
+   -  docker exec -it ctf-performance-challenge-01-db-1 psql -U challenge -d orders
+   - \dt to see a list of tables you are working with
+   - \d orders -- see the schema + any existing indexes
+
+   See Why the query is slow
+    ```sql
+  EXPLAIN ANALYZE SELECT order_id, order_date, total_amount, status
+  FROM orders
+  WHERE customer_email = 'jane.doe@example.com'
+  ORDER BY order_date DESC
+  LIMIT 20;
+  ```
+
+  Once you make your change you can confirm it is fast locally by running the command above again.
+
+  Once you think you have fixed the performance issue open a new terminal and type the following command
+  ```bash
+  curl localhost:9001/verify
+  ```
+  This will run the query 3 times, takes the median, and if it's under 5ms you get the flag back in JSON!
+  
 
   ```sql
   SELECT order_id, order_date, total_amount, status

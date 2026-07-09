@@ -38,5 +38,13 @@ FROM generate_series(1, 150) AS n;
 -- Intentionally NO indexes besides the PK.
 -- The whole point is the participant adds one.
 
+-- Disable parallel query so the seq scan is single-threaded and truly painful
+ALTER SYSTEM SET max_parallel_workers_per_gather = 0;
+-- Shrink shared buffers to minimize caching benefit
+ALTER SYSTEM SET shared_buffers = '32MB';
+-- Force the planner to never use indexes (until participant creates one compelling enough)
+ALTER SYSTEM SET effective_cache_size = '32MB';
+SELECT pg_reload_conf();
+
 -- Analyze so the planner has accurate stats (makes the slow path consistently slow)
 ANALYZE orders;
