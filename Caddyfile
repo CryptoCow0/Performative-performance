@@ -14,6 +14,10 @@
 }
 
 # --- Main site: the CTFd scoreboard (submit flags here) ---
+# Explicit hostnames win over the *.  wildcard below, so these go to CTFd
+# and only genuine team subdomains fall through to the workspace router.
+performative-performance.com,
+www.performative-performance.com,
 ctf.performative-performance.com {
 	reverse_proxy ctfd:8000
 }
