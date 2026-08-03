@@ -1,8 +1,22 @@
-services:  
-  # === Challenge 01: Missing Index ===
+# Per-team challenge stack. Launch one per team with:
+#   COMPOSE_PROJECT_NAME=ctf-<slug> TEAM_PASSWORD=<pw> \
+#     docker compose -f docker-compose.challenges.yml up -d --build
+# (use scripts/launch-team.sh which sets those for you)
+#
+# Isolation: every named volume + network below is namespaced by
+# COMPOSE_PROJECT_NAME, so ctf-teama and ctf-teamb never share state.
+#
+# How editable files reach the verifier: each code challenge copies its
+# editable file into /app/workspace in its image. A named volume mounted at
+# /app/workspace is empty on first run, so Docker seeds it from that image
+# content. code-server mounts the SAME volume, so a team's browser edits land
+# in the exact file the verifier reads. The verifier itself (and the flag it
+# holds) stays baked in /app, NOT on the volume, so teams can't read it.
+
+services:
+  # === Challenge 01: Missing Index (DB task — nothing to edit as a file) ===
   challenge-01-missing-index:
     build: ./challenges/01-missing-index
-   
     depends_on:
       - challenge-01-db
   challenge-01-db:
@@ -19,13 +33,13 @@ services:
           cpus: "0.5"
           memory: 256M
 
-  # === Challenge 02: Transaction Batching ===
+  # === Challenge 02: Transaction Batching (edit ingest.py) ===
   challenge-02-transaction-batching:
     build: ./challenges/02-transaction-batching
-    
     depends_on:
       - challenge-02-db
-
+    volumes:
+      - chal02-src:/app/workspace
   challenge-02-db:
     image: postgres:16-alpine
     environment:
@@ -34,54 +48,103 @@ services:
       - POSTGRES_DB=events
     volumes:
       - ./challenges/02-transaction-batching/seed.sql:/docker-entrypoint-initdb.d/seed.sql
-
-  # === Challenge 03: Chatty API ===
-  challenge-03-chatty-api:
-    build: ./challenges/03-chatty-api
-    
-    depends_on:
-      - challenge-03-backend
-
-  challenge-03-backend:
-    build: ./challenges/03-chatty-api/backend
-    environment:
-      - SIMULATED_LATENCY_MS=50
-
-  # === Challenge 04: Bounded Concurrency ===
-  challenge-04-bounded-concurrency:
-    build: ./challenges/04-bounded-concurrency
-   
-    deploy:
-      resources:
-        limits:
-          cpus: "1.0"
-          memory: 512M
-
-  # === Challenge 05: List to Set ===
-  challenge-05-list-to-set:
-    build: ./challenges/05-list-to-set
     deploy:
       resources:
         limits:
           cpus: "0.5"
           memory: 256M
 
-  # === Challenge 06: N² Deduplication ===
-  challenge-06-n-squared-dedup:
-    build: ./challenges/06-n-squared-dedup
-    
+  # === Challenge 03: Chatty API (edit fetch_profiles.py) ===
+  challenge-03-chatty-api:
+    build: ./challenges/03-chatty-api
+    depends_on:
+      - challenge-03-backend
+    volumes:
+      - chal03-src:/app/workspace
+  challenge-03-backend:
+    build: ./challenges/03-chatty-api/backend
+    environment:
+      - SIMULATED_LATENCY_MS=50
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  # === Challenge 04: Bounded Concurrency (edit process_images.py) ===
+  challenge-04-bounded-concurrency:
+    build: ./challenges/04-bounded-concurrency
+    volumes:
+      - chal04-src:/app/workspace
     deploy:
       resources:
         limits:
           cpus: "1.0"
           memory: 512M
 
-  # === 07: MyGov Database Profiler ===
-  challenge-07-db:
-    image: postgres:16-alpine
-    environment:
-      - POSTGRES_USER=mygov
-      - POSTGRES_PASSWORD=mygov
-      - POSTGRES_DB=mygov
+  # === Challenge 05: List to Set (edit check_permissions.py) ===
+  challenge-05-list-to-set:
+    build: ./challenges/05-list-to-set
     volumes:
-      - ./challenges/07-mygovdatabase-profiler/seed.sql:/docker-entrypoint-initdb.d/seed.sql
+      - chal05-src:/app/workspace
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  # === Challenge 06: N² Deduplication (edit dedup.py) ===
+  challenge-06-n-squared-dedup:
+    build: ./challenges/06-n-squared-dedup
+    volumes:
+      - chal06-src:/app/workspace
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+
+  # === Team workspace: VS Code in the browser (reached via Caddy) ===
+  code-server:
+    build: ./code-server
+    restart: unless-stopped
+    environment:
+      - PASSWORD=${TEAM_PASSWORD:-changeme}
+    command: ["--auth", "password", "--bind-addr", "0.0.0.0:8080", "/home/coder/project"]
+    volumes:
+      - chal02-src:/home/coder/project/02-transaction-batching
+      - chal03-src:/home/coder/project/03-chatty-api
+      - chal04-src:/home/coder/project/04-bounded-concurrency
+      - chal05-src:/home/coder/project/05-list-to-set
+      - chal06-src:/home/coder/project/06-n-squared-dedup
+    depends_on:
+      # start (and thus seed the volumes) before code-server mounts them
+      - challenge-02-transaction-batching
+      - challenge-03-chatty-api
+      - challenge-04-bounded-concurrency
+      - challenge-05-list-to-set
+      - challenge-06-n-squared-dedup
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+    networks:
+      default: {}
+      ctf-edge:
+        aliases:
+          # Caddy routes <slug>.performative-performance.com to this alias.
+          # COMPOSE_PROJECT_NAME is "ctf-<slug>", so alias is "ctf-<slug>-code-server".
+          - ${COMPOSE_PROJECT_NAME:-ctf-team}-code-server
+
+networks:
+  ctf-edge:
+    external: true
+  default: {}
+
+volumes:
+  chal02-src:
+  chal03-src:
+  chal04-src:
+  chal05-src:
+  chal06-src:

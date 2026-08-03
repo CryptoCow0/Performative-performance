@@ -12,7 +12,7 @@ USER_COUNT = 200
 
 
 def load_module():
-    spec = importlib.util.spec_from_file_location("fetch_profiles", "/app/fetch_profiles.py")
+    spec = importlib.util.spec_from_file_location("fetch_profiles", "/app/workspace/fetch_profiles.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -76,7 +76,7 @@ def index():
     return jsonify({
         "challenge": "03-chatty-api",
         "description": "Fix fetch_profiles.py to load 200 profiles in under 2s",
-        "file_to_edit": "/app/fetch_profiles.py",
+        "file_to_edit": "03-chatty-api/fetch_profiles.py",
         "endpoints": {
             "/verify": "Run the fetch and measure timing",
             "/health": "Health check",

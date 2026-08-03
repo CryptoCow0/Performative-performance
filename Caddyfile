@@ -1,3 +1,29 @@
+{
+	# on-demand TLS lets Caddy mint a cert for each team subdomain the first
+	# time it's requested — so unknown team names "just work" with no config.
+	# The ask endpoint is required by Caddy to prevent abuse; here it allows
+	# any host (fine for a closed event behind Cloudflare).
+	on_demand_tls {
+		ask http://localhost:9999/allow
+	}
+}
+
+# Internal allow endpoint for on-demand TLS (returns 200 for any host).
+:9999 {
+	respond /allow 200
+}
+
+# --- Main site: the CTFd scoreboard (submit flags here) ---
 ctf.performative-performance.com {
-    reverse_proxy ctfd:8000
+	reverse_proxy ctfd:8000
+}
+
+# --- Per-team workspaces: dynamic, no per-team config ---
+# For host "teama.performative-performance.com", labels.2 = "teama",
+# so this routes to the container aliased "ctf-teama-code-server".
+*.performative-performance.com {
+	tls {
+		on_demand
+	}
+	reverse_proxy ctf-{http.request.host.labels.2}-code-server:8080
 }

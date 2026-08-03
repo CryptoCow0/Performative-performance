@@ -61,7 +61,7 @@ def resize():
 
 
 def load_module():
-    spec = importlib.util.spec_from_file_location("process_images", "/app/process_images.py")
+    spec = importlib.util.spec_from_file_location("process_images", "/app/workspace/process_images.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -141,7 +141,7 @@ def index():
     return jsonify({
         "challenge": "04-bounded-concurrency",
         "description": "Fix process_images.py to use bounded parallelism",
-        "file_to_edit": "/app/process_images.py",
+        "file_to_edit": "04-bounded-concurrency/process_images.py",
         "endpoints": {
             "/verify": "Run the processing and check timing + error rate",
             "/resize": "Image resize service (POST {\"image_id\": N})",

@@ -51,7 +51,7 @@ def compute_expected(records):
 
 
 def load_module():
-    spec = importlib.util.spec_from_file_location("dedup", "/app/dedup.py")
+    spec = importlib.util.spec_from_file_location("dedup", "/app/workspace/dedup.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -119,7 +119,7 @@ def index():
     return jsonify({
         "challenge": "06-n-squared-dedup",
         "description": "Fix dedup.py to deduplicate 100K records in under 200ms",
-        "file_to_edit": "/app/dedup.py",
+        "file_to_edit": "06-n-squared-dedup/dedup.py",
         "endpoints": {
             "/verify": "Run the dedup and measure timing",
             "/health": "Health check",

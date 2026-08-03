@@ -41,7 +41,7 @@ def generate_test_data():
 
 
 def load_module():
-    spec = importlib.util.spec_from_file_location("check_permissions", "/app/check_permissions.py")
+    spec = importlib.util.spec_from_file_location("check_permissions", "/app/workspace/check_permissions.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -107,7 +107,7 @@ def index():
     return jsonify({
         "challenge": "05-list-to-set",
         "description": "Fix check_permissions.py to validate 10K actions in under 50ms",
-        "file_to_edit": "/app/check_permissions.py",
+        "file_to_edit": "05-list-to-set/check_permissions.py",
         "endpoints": {
             "/verify": "Run the check and measure timing",
             "/health": "Health check",

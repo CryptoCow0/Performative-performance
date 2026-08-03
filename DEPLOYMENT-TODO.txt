@@ -1,36 +1,110 @@
 Work to deploy ctf-performance
 
-Per-user isolation
-- Replace shared-port challenges with per-user stacks (compose project name ctf-<user>, unique subdomain or port range each)
-- Apply CPU/memory limits to all stacks including the databases, not just some
-- Optional: CTFd-whale plugin if you want on-demand spawn/reap instead of static allocation
+=========================================================================
+MENTAL MODEL — two independent layers (don't conflate them)
+=========================================================================
+Layer 1 — CTFd import (GLOBAL, ONE-TIME)
+  Populates the scoreboard: titles, descriptions, points, hints, flags.
+  Run ONCE. Every team sees the same challenges and submits the same flags.
+  Has NOTHING to do with per-team routing.
 
+Layer 2 — Challenge containers + routing (PER-TEAM)
+  docker-compose.challenges.yml launched once per team under a distinct
+  COMPOSE_PROJECT_NAME. Caddy routes each team's subdomain to that team's
+  stack. This is where "map routing to teams" lives.
+
+Interaction model chosen: WEB-ONLY via Caddy.
+  => Teams have NO SSH and NO docker exec. Therefore they need an in-browser
+     way to edit code / run SQL. Plan below uses code-server (VS Code in the
+     browser), one instance per team, as that in-browser workspace.
+
+=========================================================================
+IMPORTING CHALLENGES (Layer 1) — do this once after CTFd is up
+=========================================================================
+- scripts/import-challenges.sh already creates challenges + flags via the API.
+- GAP: it does NOT import hints (every challenge.yml has a `hints:` block, but
+  the script parses with grep/sed which can't read the nested YAML list).
+- Fix path A (recommended for 7 challenges): extend import-challenges.sh to
+  also POST hints, using `yq` to parse the hints block:
+      POST /api/v1/hints  { challenge_id, content, cost }
+- Fix path B: adopt ctfcli (official). Requires reshaping each challenge.yml to
+  CTFd's schema (value: not points:, flags: not flag:). Keep the custom
+  verification: block — ctfcli ignores unknown keys. More rework; skip for now.
+- Run: ./scripts/import-challenges.sh https://ctf.performative-performance.com <ADMIN_TOKEN>
+  (token from CTFd Admin > Config > Access Tokens)
+
+=========================================================================
+PER-TEAM ROUTING (Layer 2) — the main remaining work
+=========================================================================
+- Add a `code-server` service to docker-compose.challenges.yml:
+    * image codercom/code-server, password from env, workspace = mounted
+      copy of ./challenges so teams can edit the broken files
+    * attach it to the external ctf-edge network so Caddy can reach it
+    * it shares the stack's default network, so from its terminal a team can
+      reach `challenge-01-db`, `challenge-01-missing-index:8080`, etc. by
+      service name over the same Docker network
+- Launch one stack per team with an isolated project name + network:
+    COMPOSE_PROJECT_NAME=ctf-team1 docker compose -f docker-compose.challenges.yml up -d
+    COMPOSE_PROJECT_NAME=ctf-team2 docker compose -f docker-compose.challenges.yml up -d
+  Containers become ctf-team1-challenge-01-db-1, etc. Networks are isolated
+  per project so teams can't see each other's containers.
+- Caddyfile: add one block per team routing subdomain -> that team's code-server:
+    team1.performative-performance.com { reverse_proxy ctf-team1-code-server:8080 }
+    team2.performative-performance.com { reverse_proxy ctf-team2-code-server:8080 }
+  (Consider generating these blocks from a team list rather than hand-editing.)
+- DNS: wildcard *.performative-performance.com -> EC2 elastic IP (Cloudflare).
+- REWRITE challenge.yml instructions for web/service-name access, since there
+  is no docker exec anymore. e.g. challenge 01:
+    OLD: docker exec -it ctf-performance-challenge-01-db-1 psql -U challenge -d orders
+    NEW: (in the code-server terminal) psql -h challenge-01-db -U challenge -d orders
+    OLD: curl localhost:9001/verify
+    NEW: curl challenge-01-missing-index:8080/verify
+  Do this for all 7 challenges (01 & 07 = psql; 03-06 = edit file + rerun).
+
+=========================================================================
+Per-user isolation (mostly handled by per-team project names above)
+=========================================================================
+- Per-team COMPOSE_PROJECT_NAME already gives isolated stacks + networks.
+- Apply CPU/memory limits to ALL stacks including databases (02, 03-backend,
+  07-db currently have none).
+- Optional: CTFd-whale plugin for on-demand spawn/reap instead of static
+  per-team allocation (only if team count is large/unknown).
+
+=========================================================================
 Per-user reset
-- Replace global reset-environments.sh with per-user "down -v && up -d" on that user's project
-- Wrap in a script or one-button admin action
+=========================================================================
+- Replace global reset-environments.sh (it hardcodes the ctf-performance-*
+  project prefix) with a per-team reset:
+    COMPOSE_PROJECT_NAME=ctf-team1 docker compose -f docker-compose.challenges.yml down -v
+    COMPOSE_PROJECT_NAME=ctf-team1 docker compose -f docker-compose.challenges.yml up -d
+- Wrap in a script / one-button admin action taking a team name.
 
+=========================================================================
 Flag trust (only if the event is competitive)
-- Stop the verifier returning a flag the participant can read via docker exec
-- Inject flag from deploy-time secret or issue per-user random flags, or have verifier report solve to CTFd API
-- Skip entirely if it's an honor-system learning day
+=========================================================================
+- Verifier currently hardcodes the flag in server.py (e.g. 01 line 13), which
+  teams can read from the code-server file tree. For a real competition:
+  inject the flag from a deploy-time secret, issue per-team random flags, or
+  have the verifier report the solve to the CTFd API instead of returning the
+  flag string. Skip if it's an honor-system learning day.
 
-Hosting
-- One EC2 instance, t3.xlarge or t3.2xlarge, plain Docker + compose
-- Security group locked to Cloudflare IP ranges plus your SSH
-- Tear down after the event
+=========================================================================
+Hosting / TLS / Auth
+=========================================================================
+- One EC2 instance, t3.xlarge or t3.2xlarge, plain Docker + compose.
+  NOTE: N teams x full challenge stack + code-server is heavy; size to team
+  count and re-check the instance type.
+- Security group locked to Cloudflare IP ranges plus your SSH.
+- Caddy already on the box for automatic Let's Encrypt + subdomain routing.
+- Cloudflare proxied in front for edge TLS.
+- Cloudflare Access (Zero Trust) in front of CTFd (and ideally the team
+  subdomains) for SSO / email-OTP; consider scoping each team subdomain to
+  only that team's members.
+- Tear down after the event.
 
-Domain + DNS
-- Register one domain (Cloudflare Registrar or Route53)
-- Wildcard DNS record pointing at the EC2 elastic IP, proxied through Cloudflare
-
-TLS + reverse proxy
-- Caddy on the box for automatic Let's Encrypt certs and subdomain to container routing
-- Cloudflare proxied in front for edge TLS
-
-Auth
-- Cloudflare Access (Zero Trust) in front of CTFd for SSO or email-OTP login, terminates TLS before requests reach CTFd
-
+=========================================================================
 Loose ends
-- Set a real SECRET_KEY for CTFd (currently change-me-in-production)
-- infrastructure/k6 and infrastructure/monitoring are empty, fill or drop them
-- Import challenges into CTFd via import-challenges.sh after CTFd is up
+=========================================================================
+- Set a real SECRET_KEY for CTFd (currently change-me-in-production).
+- Set a strong code-server password per team (not a shared one).
+- infrastructure/k6 and infrastructure/monitoring are empty — fill or drop.

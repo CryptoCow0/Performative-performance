@@ -38,7 +38,7 @@ def generate_events(count: int) -> list[dict]:
 
 
 def load_ingest_module():
-    spec = importlib.util.spec_from_file_location("ingest", "/app/ingest.py")
+    spec = importlib.util.spec_from_file_location("ingest", "/app/workspace/ingest.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -116,7 +116,7 @@ def index():
     return jsonify({
         "challenge": "02-transaction-batching",
         "description": "Fix ingest.py to write 1000 events in under 500ms",
-        "file_to_edit": "/app/ingest.py",
+        "file_to_edit": "02-transaction-batching/ingest.py",
         "endpoints": {
             "/verify": "Run the ingest and check timing",
             "/health": "Health check",
